@@ -2,6 +2,9 @@ const express = require('express')
 const app = express()
 const bcrypt = require('bcrypt')
 
+require('dotenv').config()
+const jwt = require('jsonwebtoken')
+
 const Database = require('better-sqlite3')
 app.use(express.json())
 
@@ -60,6 +63,12 @@ app.get('/users', (req,res) => {
 
 })
 
+app.get('/todos', async (req, res) => {
+  const {token} = req.body
+  if (!token) return res.status(401).json({ error: 'token is required' })
+
+
+})
 
 // GET  for login page
 app.get('/login',(req,res) => {
@@ -77,15 +86,19 @@ app.post('/login', async (req, res) => {
   }
 
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
-  // use 401 instead of 404, 401 not authorised
+  // use 401 instead of 404, 401 not authorised if email isnt in DB
   if (!user) return res.status(401).json({ error: 'user or password is incorrect' })
 
   // bcrypt compares the password with the hashed password stored in the DB
   const match = await bcrypt.compare(password, user.password_hash)
 
   if (!match) return res.status(401).json({ error: 'user or password is incorrect' })
-  res.json({ id: user.id, name: user.name })
+
+  // make a JWT, client stores it and sends it in the body of every request
+  const token = jwt.sign({ id: user.id, name: user.name },process.env.JWT_SECRET, { expiresIn: '1h' })
   
+  // return a JSON with the token
+  res.json({ id: user.id, name: user.name, token })
 
 
 })
