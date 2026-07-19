@@ -88,7 +88,13 @@ app.post('/register', async (req, res) => {
     const result = db.prepare(
       'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)'
     ).run(name, email, hash)
-    res.status(201).json({ id: result.lastInsertRowid, name })
+    res.status(201).json({ 
+      id: result.lastInsertRowid, 
+      name,
+      message: "Successfully registered you"
+
+    })
+
   } catch (err) {
     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ error: 'email already taken ffs' })
@@ -139,12 +145,18 @@ app.post('/login', async (req, res) => {
   const token = jwt.sign({ id: user.id, name: user.name },process.env.JWT_SECRET, { expiresIn: '1h' })
   
   // return a JSON with the token
-  res.json({ id: user.id, name: user.name, token })
+  res.json({
+    message: 'Successfully logged in',
+    id: user.id,
+    name: user.name,
+    token
+  })
 })
 
 // POST request for /todos route
 app.post('/todos', authenticateToken, async (req, res) => {
   const { title, description } = req.body
+
 
   if (!title || !description) {
     return res.status(400).json({ error: 'you need to add a title and description' })
@@ -164,6 +176,25 @@ app.post('/todos', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'failed to create todo' })
+  }
+})
+
+// GET to show all todos
+app.get('/todos/all', authenticateToken, async (req, res) => {
+  try {
+    // select all where the user ID matches the one in the request
+    const todos = db.prepare(
+      'SELECT * FROM todos WHERE user_id = ? ORDER BY created_at DESC'
+    ).all(req.user.id)
+
+    res.json({
+      message: 'Here are your todos',
+      todos
+    })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'failed to fetch todos' })
   }
 })
 
