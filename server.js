@@ -153,7 +153,7 @@ app.post('/login', async (req, res) => {
   })
 })
 
-// POST request for /todos route
+// making a new todo
 app.post('/todos', authenticateToken, async (req, res) => {
   const { title, description } = req.body
 
@@ -171,7 +171,8 @@ app.post('/todos', authenticateToken, async (req, res) => {
       id: result.lastInsertRowid,
       user_id: req.user.id,
       title,
-      description
+      description,
+      message: "created a new todo"
     })
   } catch (err) {
     console.error(err)
@@ -197,6 +198,45 @@ app.get('/todos/all', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'failed to fetch todos' })
   }
 })
+
+// PUT to update an existing todo
+
+app.put('/todos/:id', authenticateToken,async (req, res ) => {
+  const {title, description} = req.body
+
+  if (!title || !description){
+    return res.status(400).json({error: "please enter a title and description"})
+  }
+
+  try{ // get the ID from the URL parameters 
+    const todo = db.prepare(
+      'SELECT * FROM todos WHERE user_id = ? AND user_id = ?'
+    ).get(req.params.id, req.user.id)
+
+    if (!todos){
+      return res.status(404).json({error:"todo doesnt even exist"})
+    }
+
+    db.prepare(`UPDATE todos SET title = ?, description =? WHERE id =? AND user_id =?`
+    ).run(title, description,req.params.id,req.user.id )
+
+    
+    res.json({
+      id: Number(req.params.id),
+      title,
+      description,
+      message: 'todo updated'
+    })
+
+
+
+  } catch(err)  {
+    next(err)
+  }
+
+})
+
+
 
 
 // listens on port 3000
